@@ -12,9 +12,17 @@ from typing import List, Dict, Optional
 # Configuration - À modifier selon votre déploiement
 ROWBOAT_SERVICE_URL = "http://localhost:8000/owui"
 
+# Configuration Rowboat - À modifier avec vos credentials
+ROWBOAT_HOST = "https://app.rowboatlabs.com"
+ROWBOAT_API_KEY = "your_api_key_here"
+ROWBOAT_PROJECT_ID = "your_project_id_here"
+
 
 def rowboat_chat(
     messages: List[Dict[str, str]],
+    rowboat_host: str = ROWBOAT_HOST,
+    rowboat_api_key: str = ROWBOAT_API_KEY,
+    rowboat_project_id: str = ROWBOAT_PROJECT_ID,
     conversation_id: Optional[str] = None,
     debug: bool = False
 ) -> str:
@@ -22,10 +30,14 @@ def rowboat_chat(
     Fonction Rowboat pour OpenWebUI
 
     Cette fonction permet d'utiliser Rowboat dans OpenWebUI de manière headless.
+    Les credentials Rowboat sont passés dynamiquement à chaque requête.
 
     Args:
         messages: Liste des messages de la conversation
                  Format: [{"role": "user/assistant/system", "content": "..."}]
+        rowboat_host: URL du serveur Rowboat (ex: https://app.rowboatlabs.com)
+        rowboat_api_key: Clé API Rowboat
+        rowboat_project_id: ID du projet Rowboat
         conversation_id: ID de conversation optionnel pour continuer une conversation
         debug: Active le mode debug pour afficher des informations détaillées
 
@@ -34,13 +46,24 @@ def rowboat_chat(
 
     Examples:
         >>> messages = [{"role": "user", "content": "Bonjour"}]
-        >>> response = rowboat_chat(messages, debug=True)
+        >>> response = rowboat_chat(
+        ...     messages,
+        ...     rowboat_host="https://app.rowboatlabs.com",
+        ...     rowboat_api_key="your_key",
+        ...     rowboat_project_id="your_project_id",
+        ...     debug=True
+        ... )
         >>> print(response)
     """
 
     try:
-        # Préparer le payload
+        # Préparer le payload avec credentials
         payload = {
+            "credentials": {
+                "host": rowboat_host,
+                "api_key": rowboat_api_key,
+                "project_id": rowboat_project_id
+            },
             "messages": messages,
             "debug": debug
         }
@@ -107,18 +130,35 @@ class RowboatConversation:
     Classe pour gérer une conversation Rowboat avec état.
 
     Usage dans OpenWebUI:
-        conv = RowboatConversation(debug=True)
+        conv = RowboatConversation(
+            host="https://app.rowboatlabs.com",
+            api_key="your_key",
+            project_id="your_project_id",
+            debug=True
+        )
         response1 = conv.send("Bonjour")
         response2 = conv.send("Comment ça va ?")  # Continue la même conversation
     """
 
-    def __init__(self, debug: bool = False):
+    def __init__(
+        self,
+        host: str = ROWBOAT_HOST,
+        api_key: str = ROWBOAT_API_KEY,
+        project_id: str = ROWBOAT_PROJECT_ID,
+        debug: bool = False
+    ):
         """
         Initialise une nouvelle conversation.
 
         Args:
+            host: URL du serveur Rowboat
+            api_key: Clé API Rowboat
+            project_id: ID du projet Rowboat
             debug: Active le mode debug
         """
+        self.host = host
+        self.api_key = api_key
+        self.project_id = project_id
         self.conversation_id = None
         self.debug = debug
         self.history = []
@@ -140,6 +180,9 @@ class RowboatConversation:
         # Envoyer à Rowboat
         response = rowboat_chat(
             messages=self.history,
+            rowboat_host=self.host,
+            rowboat_api_key=self.api_key,
+            rowboat_project_id=self.project_id,
             conversation_id=self.conversation_id,
             debug=self.debug
         )
@@ -158,6 +201,12 @@ class RowboatConversation:
 # Test de la fonction (à exécuter uniquement pour tester)
 if __name__ == "__main__":
     print("🧪 Test de la fonction Rowboat pour OpenWebUI\n")
+
+    # Vérifier que les credentials sont configurés
+    if ROWBOAT_API_KEY == "your_api_key_here":
+        print("⚠️  ATTENTION: Configurez vos credentials Rowboat avant de tester!")
+        print("   Modifiez les constantes ROWBOAT_HOST, ROWBOAT_API_KEY et ROWBOAT_PROJECT_ID\n")
+        exit(1)
 
     # Test 1: Simple message
     print("Test 1: Message simple")

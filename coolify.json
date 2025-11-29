@@ -1,26 +1,10 @@
 {
   "name": "rowboat-api-connector",
-  "description": "Rowboat API SDK Connector - Headless webservice for Rowboat",
+  "description": "Rowboat API SDK Connector - Headless webservice for Rowboat (stateless mode)",
   "dockerfile": "Dockerfile",
   "port": 8000,
   "healthCheckPath": "/health",
   "environmentVariables": [
-    {
-      "name": "ROWBOAT_HOST",
-      "value": "https://app.rowboatlabs.com",
-      "required": true
-    },
-    {
-      "name": "ROWBOAT_API_KEY",
-      "value": "",
-      "required": true,
-      "sensitive": true
-    },
-    {
-      "name": "ROWBOAT_PROJECT_ID",
-      "value": "",
-      "required": true
-    },
     {
       "name": "DEBUG",
       "value": "false",
@@ -31,5 +15,6 @@
       "value": "true",
       "required": false
     }
-  ]
+  ],
+  "note": "This service operates in stateless mode. Rowboat credentials (HOST, API_KEY, PROJECT_ID) are provided per-request, not at deployment."
 }

@@ -106,12 +106,14 @@ async def chat(
     Chat endpoint for interacting with Rowboat.
 
     This endpoint allows you to send messages to Rowboat and receive responses.
+    You must provide Rowboat credentials in the request.
     You can optionally provide a conversation_id to continue an existing conversation.
     """
     try:
         logger.info(f"Received chat request with {len(request.messages)} messages")
 
         result = service.run_turn(
+            credentials=request.credentials,
             messages=request.messages,
             conversation_id=request.conversation_id,
             mock_tools=request.mock_tools
@@ -142,6 +144,7 @@ async def openwebui_function(
 
     This endpoint is designed to be called from OpenWebUI as a custom function.
     It provides detailed debug information when debug mode is enabled.
+    Rowboat credentials must be provided in each request.
     """
     if not settings.enable_owui:
         raise HTTPException(status_code=403, detail="OpenWebUI integration is disabled")
@@ -152,8 +155,11 @@ async def openwebui_function(
             logger.debug("=== OpenWebUI Debug Mode Enabled ===")
             logger.debug(f"Messages: {request.messages}")
             logger.debug(f"Conversation ID: {request.conversation_id}")
+            logger.debug(f"Rowboat Host: {request.credentials.host}")
+            logger.debug(f"Project ID: {request.credentials.project_id}")
 
         result = service.run_turn(
+            credentials=request.credentials,
             messages=request.messages,
             conversation_id=request.conversation_id
         )
@@ -165,8 +171,8 @@ async def openwebui_function(
 
         if request.debug or settings.debug:
             metadata["debug"] = {
-                "rowboat_host": settings.rowboat_host,
-                "project_id": settings.rowboat_project_id,
+                "rowboat_host": request.credentials.host,
+                "project_id": request.credentials.project_id,
                 "messages_count": len(request.messages),
                 "debug_info": result.get("debug_info")
             }
@@ -189,13 +195,14 @@ async def openwebui_function(
 @app.get("/config")
 async def get_config(settings: Settings = Depends(get_settings)):
     """
-    Get current configuration (sanitized).
+    Get current configuration.
 
-    Returns configuration without sensitive information.
+    Returns service configuration. Note that Rowboat credentials
+    are provided per-request, not configured globally.
     """
     return {
-        "rowboat_host": settings.rowboat_host,
-        "project_id": settings.rowboat_project_id,
+        "mode": "stateless",
+        "credentials_required_per_request": True,
         "debug": settings.debug,
         "enable_owui": settings.enable_owui,
         "version": __version__

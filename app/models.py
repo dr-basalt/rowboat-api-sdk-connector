@@ -3,6 +3,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 
+class RowboatCredentials(BaseModel):
+    """Rowboat API credentials."""
+    host: str = Field(..., description="Rowboat host URL (e.g., https://app.rowboatlabs.com)")
+    api_key: str = Field(..., description="Rowboat API key")
+    project_id: str = Field(..., description="Rowboat project ID")
+
+
 class Message(BaseModel):
     """A chat message."""
     role: str = Field(..., description="Role of the message sender (user, assistant, system)")
@@ -11,6 +18,7 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoint."""
+    credentials: RowboatCredentials = Field(..., description="Rowboat API credentials")
     messages: List[Message] = Field(..., description="List of messages in the conversation")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID to continue an existing conversation")
     mock_tools: Optional[Dict[str, str]] = Field(None, description="Optional tool overrides for testing")
@@ -33,6 +41,7 @@ class HealthResponse(BaseModel):
 
 class OpenWebUIRequest(BaseModel):
     """Request model for OpenWebUI function execution."""
+    credentials: RowboatCredentials = Field(..., description="Rowboat API credentials")
     messages: List[Message] = Field(..., description="List of messages in the conversation")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID")
     debug: bool = Field(False, description="Enable debug mode for detailed logging")

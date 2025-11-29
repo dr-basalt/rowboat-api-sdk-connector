@@ -9,11 +9,6 @@ services:
     ports:
       - "${PORT:-8000}:8000"
     environment:
-      # Rowboat Configuration
-      - ROWBOAT_HOST=${ROWBOAT_HOST:-https://app.rowboatlabs.com}
-      - ROWBOAT_API_KEY=${ROWBOAT_API_KEY}
-      - ROWBOAT_PROJECT_ID=${ROWBOAT_PROJECT_ID}
-
       # Server Configuration
       - PORT=8000
       - HOST=0.0.0.0
@@ -21,6 +16,9 @@ services:
 
       # OpenWebUI Integration
       - ENABLE_OWUI=${ENABLE_OWUI:-true}
+
+      # Note: Rowboat credentials are NOT configured here.
+      # They are provided per-request, allowing multi-project usage.
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

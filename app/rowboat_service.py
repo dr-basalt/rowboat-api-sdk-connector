@@ -5,7 +5,7 @@ from rowboat.client import Client
 from rowboat.schema import UserMessage, AssistantMessage, SystemMessage
 
 from app.config import Settings
-from app.models import Message
+from app.models import Message, RowboatCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +17,30 @@ class RowboatService:
         """Initialize the Rowboat service.
 
         Args:
-            settings: Application settings containing Rowboat configuration
+            settings: Application settings
         """
         self.settings = settings
-        self.client = Client(
-            host=settings.rowboat_host,
-            projectId=settings.rowboat_project_id,
-            apiKey=settings.rowboat_api_key
-        )
-        logger.info(
-            f"Rowboat client initialized with host={settings.rowboat_host}, "
-            f"project_id={settings.rowboat_project_id}"
+        logger.info("Rowboat service initialized (stateless mode)")
+
+    def _create_client(self, credentials: RowboatCredentials) -> Client:
+        """Create a Rowboat client with the provided credentials.
+
+        Args:
+            credentials: Rowboat API credentials
+
+        Returns:
+            Configured Rowboat client
+        """
+        if self.settings.debug:
+            logger.debug(
+                f"Creating Rowboat client with host={credentials.host}, "
+                f"project_id={credentials.project_id}"
+            )
+
+        return Client(
+            host=credentials.host,
+            projectId=credentials.project_id,
+            apiKey=credentials.api_key
         )
 
     def _convert_to_rowboat_messages(self, messages: List[Message]) -> List[Any]:
@@ -54,6 +67,7 @@ class RowboatService:
 
     def run_turn(
         self,
+        credentials: RowboatCredentials,
         messages: List[Message],
         conversation_id: Optional[str] = None,
         mock_tools: Optional[Dict[str, str]] = None
@@ -61,6 +75,7 @@ class RowboatService:
         """Run a conversation turn with Rowboat.
 
         Args:
+            credentials: Rowboat API credentials
             messages: List of messages in the conversation
             conversation_id: Optional conversation ID to continue existing conversation
             mock_tools: Optional tool overrides for testing
@@ -69,6 +84,9 @@ class RowboatService:
             Dictionary containing response and conversation_id
         """
         try:
+            # Create client for this request
+            client = self._create_client(credentials)
+
             # Convert messages to Rowboat format
             rowboat_messages = self._convert_to_rowboat_messages(messages)
 
@@ -78,7 +96,7 @@ class RowboatService:
                 logger.debug(f"Mock tools: {mock_tools}")
 
             # Run the turn
-            result = self.client.run_turn(
+            result = client.run_turn(
                 messages=rowboat_messages,
                 conversationId=conversation_id,
                 mockTools=mock_tools
@@ -95,6 +113,8 @@ class RowboatService:
                     "conversation_id": result.conversationId,
                     "turn_output_count": len(result.turn.output) if result.turn.output else 0,
                     "messages_sent": len(rowboat_messages),
+                    "rowboat_host": credentials.host,
+                    "project_id": credentials.project_id,
                 }
                 logger.debug(f"Debug info: {debug_info}")
 
@@ -112,16 +132,8 @@ class RowboatService:
         """Check if the Rowboat service is healthy.
 
         Returns:
-            True if service is healthy, False otherwise
+            True if service is healthy (always True in stateless mode)
         """
-        try:
-            # Simple validation that client is configured
-            return (
-                self.client is not None
-                and self.settings.rowboat_host
-                and self.settings.rowboat_api_key
-                and self.settings.rowboat_project_id
-            )
-        except Exception as e:
-            logger.error(f"Health check failed: {str(e)}")
-            return False
+        # Service is always healthy in stateless mode
+        # Validation happens per-request with credentials
+        return True

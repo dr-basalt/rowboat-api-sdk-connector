@@ -6,18 +6,6 @@
   "port": 8000,
   "env": [
     {
-      "key": "ROWBOAT_HOST",
-      "value": "https://app.rowboatlabs.com"
-    },
-    {
-      "key": "ROWBOAT_API_KEY",
-      "value": ""
-    },
-    {
-      "key": "ROWBOAT_PROJECT_ID",
-      "value": ""
-    },
-    {
       "key": "DEBUG",
       "value": "false"
     },
@@ -31,5 +19,6 @@
     "interval": 30,
     "timeout": 10,
     "retries": 3
-  }
+  },
+  "note": "Rowboat credentials (HOST, API_KEY, PROJECT_ID) are provided per-request, not configured at deployment."
 }

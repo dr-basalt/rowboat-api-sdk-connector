@@ -6,10 +6,10 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # Rowboat Configuration
-    rowboat_host: str
-    rowboat_api_key: str
-    rowboat_project_id: str
+    # Rowboat Configuration (Optional - can be provided per request)
+    rowboat_host: Optional[str] = None
+    rowboat_api_key: Optional[str] = None
+    rowboat_project_id: Optional[str] = None
 
     # Server Configuration
     port: int = 8000

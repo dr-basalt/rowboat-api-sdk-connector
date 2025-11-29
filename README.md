@@ -1,24 +1,24 @@
 # Rowboat API SDK Connector
 
-Un webservice headless pour Rowboat SDK avec support OpenWebUI, déployable sur Dokploy, Coolify, et Kubero.
+Un webservice headless **stateless** pour Rowboat SDK avec support OpenWebUI. Les credentials Rowboat sont passés dynamiquement dans chaque requête, permettant d'utiliser le service avec plusieurs projets Rowboat.
 
 ## Fonctionnalités
 
-- **API REST complète** pour interagir avec Rowboat SDK
+- **API REST stateless** - Aucune configuration Rowboat au démarrage
+- **Multi-projets** - Utilisez plusieurs projets Rowboat avec un seul service
 - **Support OpenWebUI** avec endpoint dédié (`/owui`)
 - **Mode debug** pour diagnostic détaillé
 - **Gestion de conversations** avec support de `conversation_id`
 - **Déploiement facile** via Docker
 - **Compatible** avec Dokploy, Coolify, et Kubero
-- **Health checks** intégrés
 
-## Prérequis
+## Architecture
 
-- Docker et Docker Compose (pour déploiement local)
-- Un compte Rowboat avec :
-  - `API_KEY`
-  - `PROJECT_ID`
-  - `HOST` (https://app.rowboatlabs.com ou votre instance)
+Ce webservice fonctionne en mode **stateless** :
+- **Pas de configuration Rowboat au démarrage**
+- Les credentials (HOST, API_KEY, PROJECT_ID) sont passés **dans chaque requête**
+- Permet d'utiliser dynamiquement plusieurs projets Rowboat
+- Parfait pour l'intégration avec OpenWebUI
 
 ## Installation Locale
 
@@ -29,21 +29,22 @@ git clone <votre-repo>
 cd rowboat-api-sdk-connector
 ```
 
-### 2. Configurer les variables d'environnement
+### 2. Configurer (optionnel)
 
 ```bash
 cp .env.example .env
 ```
 
-Éditez le fichier `.env` avec vos credentials Rowboat :
+Éditez `.env` pour la configuration du serveur uniquement :
 
 ```env
-ROWBOAT_HOST=https://app.rowboatlabs.com
-ROWBOAT_API_KEY=votre_api_key
-ROWBOAT_PROJECT_ID=votre_project_id
+PORT=8000
+HOST=0.0.0.0
 DEBUG=false
 ENABLE_OWUI=true
 ```
+
+**Note** : Les credentials Rowboat ne sont PAS configurés ici. Ils sont passés dans chaque requête.
 
 ### 3. Démarrer avec Docker Compose
 
@@ -58,37 +59,6 @@ Le service sera accessible sur `http://localhost:8000`
 ```bash
 curl http://localhost:8000/health
 ```
-
-## Déploiement sur Plateformes Cloud
-
-### Dokploy
-
-1. Importez le repository dans Dokploy
-2. Dokploy détectera automatiquement le fichier `dokploy.json`
-3. Configurez les variables d'environnement dans l'interface :
-   - `ROWBOAT_API_KEY`
-   - `ROWBOAT_PROJECT_ID`
-   - `ROWBOAT_HOST` (optionnel, défaut: https://app.rowboatlabs.com)
-4. Déployez l'application
-
-### Coolify
-
-1. Créez une nouvelle application dans Coolify
-2. Sélectionnez le repository
-3. Coolify détectera le fichier `coolify.json`
-4. Configurez les variables d'environnement sensibles :
-   - `ROWBOAT_API_KEY`
-   - `ROWBOAT_PROJECT_ID`
-5. Déployez
-
-### Kubero
-
-1. Créez une nouvelle app dans Kubero
-2. Kubero utilisera le fichier `app.yaml`
-3. Dans l'interface Kubero, configurez :
-   - `ROWBOAT_API_KEY`
-   - `ROWBOAT_PROJECT_ID`
-4. Déployez l'application
 
 ## API Endpoints
 
@@ -107,13 +77,13 @@ Vérification de l'état du service.
 
 ### GET `/config`
 
-Récupère la configuration actuelle (sans informations sensibles).
+Récupère la configuration du service.
 
 **Réponse :**
 ```json
 {
-  "rowboat_host": "https://app.rowboatlabs.com",
-  "project_id": "your_project_id",
+  "mode": "stateless",
+  "credentials_required_per_request": true,
   "debug": false,
   "enable_owui": true,
   "version": "0.1.0"
@@ -127,6 +97,11 @@ Endpoint principal pour interagir avec Rowboat.
 **Requête :**
 ```json
 {
+  "credentials": {
+    "host": "https://app.rowboatlabs.com",
+    "api_key": "your_api_key",
+    "project_id": "your_project_id"
+  },
   "messages": [
     {
       "role": "user",
@@ -134,8 +109,7 @@ Endpoint principal pour interagir avec Rowboat.
     }
   ],
   "conversation_id": null,
-  "mock_tools": null,
-  "stream": false
+  "mock_tools": null
 }
 ```
 
@@ -148,19 +122,6 @@ Endpoint principal pour interagir avec Rowboat.
 }
 ```
 
-**Continuer une conversation :**
-```json
-{
-  "messages": [
-    {
-      "role": "user",
-      "content": "Quelle est sa population ?"
-    }
-  ],
-  "conversation_id": "conv_123abc"
-}
-```
-
 ### POST `/owui` (OpenWebUI)
 
 Endpoint spécifique pour l'intégration avec OpenWebUI.
@@ -168,6 +129,11 @@ Endpoint spécifique pour l'intégration avec OpenWebUI.
 **Requête :**
 ```json
 {
+  "credentials": {
+    "host": "https://app.rowboatlabs.com",
+    "api_key": "your_api_key",
+    "project_id": "your_project_id"
+  },
   "messages": [
     {
       "role": "user",
@@ -198,62 +164,87 @@ Endpoint spécifique pour l'intégration avec OpenWebUI.
 
 ## Intégration avec OpenWebUI
 
-### Méthode 1 : Function Tool
+### Fonction OpenWebUI Complète
 
-Créez une nouvelle fonction dans OpenWebUI :
+Copiez le code de `examples/openwebui_function.py` dans OpenWebUI. Voici un exemple simplifié :
 
 ```python
 import requests
-import json
 
-def rowboat_chat(messages: list, debug: bool = False) -> str:
+# Configuration
+ROWBOAT_SERVICE_URL = "http://your-service:8000/owui"
+ROWBOAT_HOST = "https://app.rowboatlabs.com"
+ROWBOAT_API_KEY = "your_api_key"
+ROWBOAT_PROJECT_ID = "your_project_id"
+
+def rowboat_chat(messages, debug=False):
     """
     Fonction Rowboat pour OpenWebUI
-
-    :param messages: Liste des messages de la conversation
-    :param debug: Active le mode debug pour plus d'informations
-    :return: Réponse de l'assistant
     """
-
-    # URL de votre service Rowboat
-    url = "http://your-service-url:8000/owui"
-
-    # Préparer les messages au format attendu
-    formatted_messages = [
-        {"role": msg.get("role", "user"), "content": msg.get("content", "")}
-        for msg in messages
-    ]
-
     payload = {
-        "messages": formatted_messages,
+        "credentials": {
+            "host": ROWBOAT_HOST,
+            "api_key": ROWBOAT_API_KEY,
+            "project_id": ROWBOAT_PROJECT_ID
+        },
+        "messages": messages,
         "debug": debug
     }
 
-    try:
-        response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
+    response = requests.post(ROWBOAT_SERVICE_URL, json=payload, timeout=60)
+    response.raise_for_status()
+    result = response.json()
 
-        # Afficher les infos de debug si demandé
-        if debug and "metadata" in result and "debug" in result["metadata"]:
-            print(f"DEBUG INFO: {json.dumps(result['metadata']['debug'], indent=2)}")
+    if debug and "metadata" in result:
+        print(f"DEBUG: {result['metadata']}")
 
-        return result["response"]
-
-    except Exception as e:
-        return f"Erreur lors de l'appel à Rowboat: {str(e)}"
+    return result["response"]
 ```
 
-### Méthode 2 : API directe
+### Utilisation dans OpenWebUI
 
-Vous pouvez également appeler directement l'API depuis n'importe quelle application :
+```python
+# Exemple d'utilisation
+messages = [
+    {"role": "user", "content": "Bonjour"}
+]
+
+response = rowboat_chat(messages, debug=True)
+print(response)
+```
+
+## Exemples d'Utilisation
+
+### Exemple 1 : Conversation Simple avec curl
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "credentials": {
+      "host": "https://app.rowboatlabs.com",
+      "api_key": "your_api_key",
+      "project_id": "your_project_id"
+    },
+    "messages": [
+      {"role": "user", "content": "Quelle est la capitale de la France ?"}
+    ]
+  }'
+```
+
+### Exemple 2 : Avec Python
 
 ```python
 import requests
 
 response = requests.post(
-    "http://your-service-url:8000/chat",
+    "http://localhost:8000/chat",
     json={
+        "credentials": {
+            "host": "https://app.rowboatlabs.com",
+            "api_key": "your_api_key",
+            "project_id": "your_project_id"
+        },
         "messages": [
             {"role": "user", "content": "Bonjour"}
         ]
@@ -265,189 +256,153 @@ print(result["response"])
 print(f"Conversation ID: {result['conversation_id']}")
 ```
 
+### Exemple 3 : Multi-projets
+
+Le même service peut gérer plusieurs projets :
+
+```python
+# Projet 1
+response1 = requests.post(url, json={
+    "credentials": {
+        "host": "https://app.rowboatlabs.com",
+        "api_key": "key_project_1",
+        "project_id": "project_1"
+    },
+    "messages": [{"role": "user", "content": "Hello"}]
+})
+
+# Projet 2 avec le même service
+response2 = requests.post(url, json={
+    "credentials": {
+        "host": "https://app.rowboatlabs.com",
+        "api_key": "key_project_2",
+        "project_id": "project_2"
+    },
+    "messages": [{"role": "user", "content": "Bonjour"}]
+})
+```
+
 ## Mode Debug
 
-Pour activer le mode debug globalement, configurez `DEBUG=true` dans vos variables d'environnement.
-
-Pour activer le debug par requête (endpoint `/owui`), passez `"debug": true` dans la requête :
+Activez le debug par requête avec `"debug": true` :
 
 ```bash
 curl -X POST http://localhost:8000/owui \
   -H "Content-Type: application/json" \
   -d '{
+    "credentials": {
+      "host": "https://app.rowboatlabs.com",
+      "api_key": "your_key",
+      "project_id": "your_project_id"
+    },
     "messages": [{"role": "user", "content": "Test"}],
     "debug": true
   }'
 ```
 
 Le mode debug fournira :
-- Nombre de messages traités
-- Informations sur la conversation
 - Configuration Rowboat utilisée
-- Logs détaillés dans les sorties du conteneur
+- Nombre de messages traités
+- Informations détaillées de la conversation
+- Logs dans les sorties du conteneur
 
-## Exemples d'Utilisation
+## Déploiement
 
-### Exemple 1 : Conversation Simple
-
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {"role": "user", "content": "Quelle est la capitale de la France ?"}
-    ]
-  }'
-```
-
-### Exemple 2 : Continuation de Conversation
+### Docker Compose (Local)
 
 ```bash
-# Première requête
-CONV_ID=$(curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {"role": "user", "content": "Quelle est la capitale de la France ?"}
-    ]
-  }' | jq -r '.conversation_id')
-
-# Deuxième requête avec le même conversation_id
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"messages\": [
-      {\"role\": \"user\", \"content\": \"Quelle est sa population ?\"}
-    ],
-    \"conversation_id\": \"$CONV_ID\"
-  }"
+docker-compose up -d
 ```
 
-### Exemple 3 : Mock Tools (Test)
+### Dokploy
 
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {"role": "user", "content": "Quel temps fait-il ?"}
-    ],
-    "mock_tools": {
-      "weather_lookup": "Il fait beau et 25°C partout."
-    }
-  }'
-```
+1. Importez le repository dans Dokploy
+2. Dokploy détectera automatiquement `dokploy.json`
+3. Aucune variable d'environnement Rowboat requise !
+4. Déployez
 
-## Logs et Monitoring
+### Coolify
 
-### Voir les logs en temps réel
+1. Créez une application dans Coolify
+2. Sélectionnez le repository
+3. Coolify détectera `coolify.json`
+4. Déployez
 
-```bash
-docker-compose logs -f rowboat-connector
-```
+### Kubero
 
-### Vérifier les métriques
+1. Créez une app dans Kubero
+2. Kubero utilisera `app.yaml`
+3. Déployez
 
-Le service expose un endpoint de health check qui peut être utilisé pour le monitoring :
-
-```bash
-curl http://localhost:8000/health
-```
-
-## Dépannage
-
-### Le service ne démarre pas
-
-1. Vérifiez que toutes les variables d'environnement sont configurées :
-   ```bash
-   docker-compose config
-   ```
-
-2. Vérifiez les logs :
-   ```bash
-   docker-compose logs rowboat-connector
-   ```
-
-### Erreur 503 "Rowboat service not initialized"
-
-Cela signifie que le service Rowboat n'a pas pu s'initialiser. Vérifiez :
-- Que `ROWBOAT_API_KEY` est défini et valide
-- Que `ROWBOAT_PROJECT_ID` est défini et valide
-- Que `ROWBOAT_HOST` est accessible
-
-### Erreur lors de l'appel à Rowboat
-
-Vérifiez :
-1. Que votre projet est déployé en production dans Rowboat Studio
-2. Que l'API key a les permissions nécessaires
-3. Les logs du service pour plus de détails
-
-## Développement
-
-### Installation locale pour développement
-
-```bash
-# Créer un environnement virtuel
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
-
-# Installer les dépendances
-pip install -r requirements.txt
-
-# Configurer les variables d'environnement
-cp .env.example .env
-# Éditer .env avec vos credentials
-
-# Lancer le serveur en mode développement
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Structure du Projet
+## Structure du Projet
 
 ```
 rowboat-api-sdk-connector/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # Application FastAPI principale
-│   ├── config.py            # Configuration et settings
+│   ├── main.py              # Application FastAPI
+│   ├── config.py            # Configuration
 │   ├── models.py            # Modèles Pydantic
-│   └── rowboat_service.py   # Service Rowboat
+│   └── rowboat_service.py   # Service Rowboat (stateless)
+├── examples/
+│   ├── openwebui_function.py  # Fonction OpenWebUI
+│   └── test_api.py            # Tests API
 ├── Dockerfile
 ├── docker-compose.yml
-├── dokploy.json            # Configuration Dokploy
-├── coolify.json            # Configuration Coolify
-├── app.yaml                # Configuration Kubero
+├── dokploy.json
+├── coolify.json
+├── app.yaml
 ├── requirements.txt
-├── .env.example
-├── .gitignore
 └── README.md
 ```
 
+## Développement Local
+
+```bash
+# Créer un environnement virtuel
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Lancer le serveur
+./run.sh dev
+# ou
+make dev
+```
+
+## Avantages du Mode Stateless
+
+1. **Multi-projets** : Un seul service pour tous vos projets Rowboat
+2. **Sécurité** : Pas de credentials stockés dans le service
+3. **Flexibilité** : Changez de projet par requête
+4. **Simplicité** : Aucune configuration au démarrage
+
+## Tests
+
+Utilisez le script de test fourni :
+
+```bash
+python examples/test_api.py
+```
+
+**Note** : Configurez les credentials dans le script avant de tester.
+
 ## Sécurité
 
-- Ne jamais committer le fichier `.env` avec vos credentials
-- Utilisez des secrets managers pour les déploiements en production
-- Limitez l'accès à l'API avec un reverse proxy et authentification si nécessaire
-- Activez HTTPS en production
+- Ne jamais exposer vos API keys dans le code
+- Utilisez HTTPS en production
+- Limitez l'accès au service avec un firewall
+- Considérez l'ajout d'authentification au service
+
+## Support
+
+Pour toute question :
+1. Consultez la documentation Rowboat : https://docs.rowboatlabs.com
+2. Vérifiez les logs : `docker-compose logs -f`
+3. Testez avec le mode debug activé
 
 ## License
 
 MIT
-
-## Support
-
-Pour toute question ou problème :
-1. Vérifiez la documentation Rowboat : https://docs.rowboatlabs.com
-2. Consultez les logs du service
-3. Créez une issue sur le repository
-
-## Roadmap
-
-- [ ] Support du streaming pour les réponses
-- [ ] Authentification JWT
-- [ ] Rate limiting
-- [ ] Métriques Prometheus
-- [ ] Support multi-projets
-- [ ] Interface web d'administration
