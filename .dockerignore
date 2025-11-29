@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Examples
+examples/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Deployment configs
+dokploy.json
+coolify.json
+app.yaml
+
+# Scripts
+*.sh
+Makefile
+
+# Logs
+*.log
+logs/

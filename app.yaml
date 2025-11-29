@@ -1,0 +1,75 @@
+# Kubero configuration file
+apiVersion: application.kubero.dev/v1alpha1
+kind: KuberoApp
+metadata:
+  name: rowboat-api-connector
+spec:
+  name: rowboat-api-connector
+  deploymentstrategy: git
+
+  # Build configuration
+  buildpack:
+    build:
+      command: docker build -t rowboat-api-connector .
+    run:
+      command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # Container configuration
+  image:
+    repository: rowboat-api-connector
+    tag: latest
+    pullPolicy: Always
+
+  # Ports
+  port:
+    containerPort: 8000
+    protocol: TCP
+
+  # Environment variables
+  env:
+    - name: ROWBOAT_HOST
+      value: "https://app.rowboatlabs.com"
+    - name: ROWBOAT_API_KEY
+      value: ""  # Set this in Kubero UI
+    - name: ROWBOAT_PROJECT_ID
+      value: ""  # Set this in Kubero UI
+    - name: DEBUG
+      value: "false"
+    - name: ENABLE_OWUI
+      value: "true"
+
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Resources (adjust as needed)
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+
+  # Scaling
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80

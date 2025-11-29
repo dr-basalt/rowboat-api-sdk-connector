@@ -1,0 +1,35 @@
+{
+  "name": "rowboat-api-connector",
+  "description": "Rowboat API SDK Connector - Headless webservice for Rowboat",
+  "dockerfile": "Dockerfile",
+  "port": 8000,
+  "healthCheckPath": "/health",
+  "environmentVariables": [
+    {
+      "name": "ROWBOAT_HOST",
+      "value": "https://app.rowboatlabs.com",
+      "required": true
+    },
+    {
+      "name": "ROWBOAT_API_KEY",
+      "value": "",
+      "required": true,
+      "sensitive": true
+    },
+    {
+      "name": "ROWBOAT_PROJECT_ID",
+      "value": "",
+      "required": true
+    },
+    {
+      "name": "DEBUG",
+      "value": "false",
+      "required": false
+    },
+    {
+      "name": "ENABLE_OWUI",
+      "value": "true",
+      "required": false
+    }
+  ]
+}

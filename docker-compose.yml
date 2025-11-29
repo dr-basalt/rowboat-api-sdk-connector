@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  rowboat-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rowboat-api-connector
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # Rowboat Configuration
+      - ROWBOAT_HOST=${ROWBOAT_HOST:-https://app.rowboatlabs.com}
+      - ROWBOAT_API_KEY=${ROWBOAT_API_KEY}
+      - ROWBOAT_PROJECT_ID=${ROWBOAT_PROJECT_ID}
+
+      # Server Configuration
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DEBUG=${DEBUG:-false}
+
+      # OpenWebUI Integration
+      - ENABLE_OWUI=${ENABLE_OWUI:-true}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - rowboat-network
+
+networks:
+  rowboat-network:
+    driver: bridge

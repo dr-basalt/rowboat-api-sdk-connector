@@ -1,0 +1,35 @@
+{
+  "name": "rowboat-api-connector",
+  "type": "docker",
+  "sourceProvider": "github",
+  "dockerfile": "Dockerfile",
+  "port": 8000,
+  "env": [
+    {
+      "key": "ROWBOAT_HOST",
+      "value": "https://app.rowboatlabs.com"
+    },
+    {
+      "key": "ROWBOAT_API_KEY",
+      "value": ""
+    },
+    {
+      "key": "ROWBOAT_PROJECT_ID",
+      "value": ""
+    },
+    {
+      "key": "DEBUG",
+      "value": "false"
+    },
+    {
+      "key": "ENABLE_OWUI",
+      "value": "true"
+    }
+  ],
+  "healthcheck": {
+    "path": "/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  }
+}
