@@ -23,6 +23,9 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        # Don't fail if .env file doesn't exist
+        env_file_required = False
+        extra = "ignore"
 
 
 def get_settings() -> Settings:
