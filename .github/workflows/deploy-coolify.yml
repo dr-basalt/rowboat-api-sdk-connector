@@ -1,0 +1,33 @@
+name: Deploy to Coolify
+
+on:
+  push:
+    branches:
+      - claude/rowboat-webservice-deployment-01MgbE3unuZHyJuQL4XXDgQh
+      - main
+
+jobs:
+  trigger-coolify-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify Webhook
+        run: |
+          curl -X POST http://128.140.115.220:8000/webhooks/source/github/events/manual \
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "refs/heads/${{ github.ref_name }}",
+              "repository": {
+                "full_name": "${{ github.repository }}",
+                "clone_url": "${{ github.event.repository.clone_url }}"
+              },
+              "pusher": {
+                "name": "${{ github.actor }}"
+              },
+              "head_commit": {
+                "id": "${{ github.sha }}",
+                "message": "${{ github.event.head_commit.message }}"
+              }
+            }'
+
+      - name: Deployment triggered
+        run: echo "Coolify deployment webhook triggered successfully"
